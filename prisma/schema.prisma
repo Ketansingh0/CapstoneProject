@@ -1,0 +1,114 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  name          String
+  password      String
+  role          String   @default("user")
+  isVerified    Boolean  @default(false)
+  verifyToken   String?
+  verifyExpires DateTime?
+  notes         Note[]
+  sharedNotes   NoteShare[] @relation("NoteShares")
+  receivedShares NoteShare[] @relation("ReceivedShares")
+  comments      NoteComment[]
+  categories    Category[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Note {
+  id         String    @id @default(cuid())
+  title      String
+  content    String
+  isPublic   Boolean   @default(false)
+  isDeleted  Boolean   @default(false)
+  user       User      @relation(fields: [userId], references: [id])
+  userId     String
+  category   Category? @relation(fields: [categoryId], references: [id])
+  categoryId String?
+  tags       NoteTag[]
+  attachments NoteAttachment[]
+  shares     NoteShare[]
+  comments   NoteComment[]
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+}
+
+model Tag {
+  id    String   @id @default(cuid())
+  name  String   @unique
+  notes NoteTag[]
+}
+
+model Category {
+  id        String     @id @default(cuid())
+  name      String
+  user      User       @relation(fields: [userId], references: [id])
+  userId    String
+  parent    Category?  @relation("CategoryChildren", fields: [parentId], references: [id])
+  parentId  String?
+  children  Category[] @relation("CategoryChildren")
+  notes     Note[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+model NoteTag {
+  note    Note   @relation(fields: [noteId], references: [id])
+  noteId  String
+  tag     Tag    @relation(fields: [tagId], references: [id])
+  tagId   String
+
+  @@id([noteId, tagId])
+}
+
+model NoteAttachment {
+  id        String   @id @default(cuid())
+  filename  String
+  originalName String
+  mimeType  String
+  size      Int
+  url       String
+  note      Note     @relation(fields: [noteId], references: [id])
+  noteId    String
+  createdAt DateTime @default(now())
+}
+
+model NoteShare {
+  id        String   @id @default(cuid())
+  note      Note     @relation(fields: [noteId], references: [id])
+  noteId    String
+  sharedBy  User     @relation("NoteShares", fields: [sharedById], references: [id])
+  sharedById String
+  sharedWith User?   @relation("ReceivedShares", fields: [sharedWithId], references: [id])
+  sharedWithId String?
+  shareToken String  @unique
+  permissions String @default("read") // "read" | "write" | "admin"
+  expiresAt DateTime?
+  createdAt DateTime @default(now())
+}
+
+model NoteComment {
+  id        String   @id @default(cuid())
+  content   String
+  note      Note     @relation(fields: [noteId], references: [id])
+  noteId    String
+  author    User     @relation(fields: [authorId], references: [id])
+  authorId  String
+  parentId  String?
+  parent    NoteComment? @relation("CommentReplies", fields: [parentId], references: [id])
+  replies   NoteComment[] @relation("CommentReplies")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+
